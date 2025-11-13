@@ -44,9 +44,19 @@ pipeline = NSEDataPipeline()
 pipeline.create_tables()  # Creates NSE equity data tables
 ```
 
-## Database Schema
+## Database Architecture
 
-### NSE Equity Data Table
+### Dual Database Design
+- **`opulent_aurum_db`**: NSE Equity Data (OHLCV historical data)
+- **`opulent_aurum`**: F&O Derivatives Data (Futures & Options)
+
+### Database Setup
+```bash
+# PostgreSQL 17 is installed and configured
+# Two databases created for organized data management
+```
+
+### NSE Equity Data Schema (`opulent_aurum_db`)
 ```sql
 CREATE TABLE nse_equity_data (
     id SERIAL PRIMARY KEY,
@@ -62,18 +72,55 @@ CREATE TABLE nse_equity_data (
 );
 ```
 
+### F&O Data Schema (`opulent_aurum`)
+```sql
+-- Futures Data
+CREATE TABLE nse_futures_data (
+    id SERIAL PRIMARY KEY,
+    symbol VARCHAR(50) NOT NULL,
+    expiry_date DATE NOT NULL,
+    date DATE NOT NULL,
+    open_price DECIMAL(10,2),
+    high_price DECIMAL(10,2),
+    low_price DECIMAL(10,2),
+    close_price DECIMAL(10,2),
+    volume BIGINT,
+    open_interest BIGINT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(symbol, expiry_date, date)
+);
+
+-- Options Data
+CREATE TABLE nse_options_data (
+    id SERIAL PRIMARY KEY,
+    symbol VARCHAR(50) NOT NULL,
+    expiry_date DATE NOT NULL,
+    strike_price DECIMAL(10,2) NOT NULL,
+    option_type VARCHAR(10) NOT NULL, -- 'CE' or 'PE'
+    date DATE NOT NULL,
+    open_price DECIMAL(10,2),
+    high_price DECIMAL(10,2),
+    low_price DECIMAL(10,2),
+    close_price DECIMAL(10,2),
+    volume BIGINT,
+    open_interest BIGINT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(symbol, expiry_date, strike_price, option_type, date)
+);
+```
+
 ## Usage
 
-### Basic Data Pipeline Operations
+### NSE Equity Data Pipeline (`opulent_aurum_db`)
 
 ```python
 from nse_data_pipeline import NSEDataPipeline
 
-# Initialize pipeline
-pipeline = NSEDataPipeline()
+# Initialize NSE equity pipeline
+nse_pipeline = NSEDataPipeline()  # Defaults to opulent_aurum_db
 
 # Insert equity data
-pipeline.insert_equity_data(
+nse_pipeline.insert_equity_data(
     symbol='RELIANCE',
     date=datetime.date(2024, 1, 1),
     open_price=2500.00,
@@ -84,11 +131,52 @@ pipeline.insert_equity_data(
 )
 
 # Retrieve data
-reliance_data = pipeline.get_equity_data('RELIANCE')
+reliance_data = nse_pipeline.get_equity_data('RELIANCE')
 print(reliance_data.head())
 ```
 
-### Run the Pipeline Test
+### F&O Data Pipeline (`opulent_aurum`)
+
+```python
+from nse_data_pipeline import FNODataPipeline
+
+# Initialize F&O pipeline
+fno_pipeline = FNODataPipeline()  # Defaults to opulent_aurum
+
+# Insert futures data
+fno_pipeline.insert_futures_data(
+    symbol='RELIANCE',
+    expiry_date=datetime.date(2024, 1, 25),
+    date=datetime.date(2024, 1, 1),
+    open_price=2520.00,
+    high_price=2540.00,
+    low_price=2500.00,
+    close_price=2530.00,
+    volume=500000,
+    open_interest=2000000
+)
+
+# Insert options data
+fno_pipeline.insert_options_data(
+    symbol='RELIANCE',
+    expiry_date=datetime.date(2024, 1, 25),
+    strike_price=2500.00,
+    option_type='CE',  # 'CE' for Call, 'PE' for Put
+    date=datetime.date(2024, 1, 1),
+    open_price=45.00,
+    high_price=52.00,
+    low_price=42.00,
+    close_price=48.00,
+    volume=100000,
+    open_interest=500000
+)
+
+# Retrieve data
+futures_data = fno_pipeline.get_futures_data('RELIANCE')
+options_data = fno_pipeline.get_options_data('RELIANCE', option_type='CE')
+```
+
+### Run Complete Test
 ```bash
 python nse_data_pipeline.py
 ```
