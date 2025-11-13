@@ -443,39 +443,33 @@ class FNODataPipeline:
 
 # Example usage and testing
 if __name__ == "__main__":
-    # Test NSE Equity Pipeline (opulent_aurum_db)
-    print("=== NSE Equity Data Pipeline (opulent_aurum_db) ===")
-    nse_pipeline = NSEDataPipeline()
-    if nse_pipeline.test_connection():
-        print("✅ NSE Database connection successful!")
-        symbols = nse_pipeline.get_available_symbols()
-        print(f"📊 Available equity symbols: {symbols}")
+    # Test NSE Equity Pipeline in both databases
+    print("=== NSE Equity Data in opulent_aurum_db ===")
+    nse_pipeline_db = NSEDataPipeline("postgresql://postgres@localhost:5432/opulent_aurum_db")
+    if nse_pipeline_db.test_connection():
+        print("✅ NSE Database (opulent_aurum_db) connection successful!")
+        symbols_db = nse_pipeline_db.get_available_symbols()
+        print(f"📊 Available equity symbols: {symbols_db}")
+        record_count_db = len(nse_pipeline_db.get_equity_data('RELIANCE'))
+        print(f"📈 RELIANCE records in opulent_aurum_db: {record_count_db}")
+
+    print("\n=== NSE Equity Data in opulent_aurum ===")
+    nse_pipeline_main = NSEDataPipeline("postgresql://postgres@localhost:5432/opulent_aurum")
+    if nse_pipeline_main.test_connection():
+        print("✅ NSE Database (opulent_aurum) connection successful!")
+        symbols_main = nse_pipeline_main.get_available_symbols()
+        print(f"📊 Available equity symbols: {symbols_main}")
+        record_count_main = len(nse_pipeline_main.get_equity_data('RELIANCE'))
+        print(f"📈 RELIANCE records in opulent_aurum: {record_count_main}")
 
     # Test F&O Pipeline (opulent_aurum)
     print("\n=== F&O Data Pipeline (opulent_aurum) ===")
     fno_pipeline = FNODataPipeline()
     if fno_pipeline.test_connection():
         print("✅ F&O Database connection successful!")
-        fno_pipeline.create_tables()
+        expiry_dates = fno_pipeline.get_available_expiry_dates('RELIANCE', 'futures')
+        print(f"📅 Available expiry dates for RELIANCE futures: {expiry_dates}")
 
-        # Sample futures data
-        fno_pipeline.insert_futures_data(
-            symbol='RELIANCE', expiry_date=date(2024, 1, 25), date=date(2024, 1, 1),
-            open_price=2520.00, high_price=2540.00, low_price=2500.00, close_price=2530.00,
-            volume=500000, open_interest=2000000
-        )
-
-        # Sample options data
-        fno_pipeline.insert_options_data(
-            symbol='RELIANCE', expiry_date=date(2024, 1, 25), strike_price=2500.00,
-            option_type='CE', date=date(2024, 1, 1),
-            open_price=45.00, high_price=52.00, low_price=42.00, close_price=48.00,
-            volume=100000, open_interest=500000
-        )
-
-        print("📊 Sample F&O data inserted successfully!")
-        print(f"📅 Available expiry dates for RELIANCE futures: {fno_pipeline.get_available_expiry_dates('RELIANCE', 'futures')}")
-
-    print("\n✅ Dual Database Architecture Setup Complete!")
-    print("📊 opulent_aurum_db: NSE Equity Data")
-    print("📊 opulent_aurum: F&O Derivatives Data")
+    print("\n✅ Dual Database Architecture with NSE Equity Data in Both!")
+    print("📊 opulent_aurum_db: NSE Equity + Custom equity_data table")
+    print("📊 opulent_aurum: NSE Equity + F&O Derivatives Data")

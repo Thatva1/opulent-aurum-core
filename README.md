@@ -46,14 +46,15 @@ pipeline.create_tables()  # Creates NSE equity data tables
 
 ## Database Architecture
 
-### Dual Database Design
-- **`opulent_aurum_db`**: NSE Equity Data (OHLCV historical data)
-- **`opulent_aurum`**: F&O Derivatives Data (Futures & Options)
+### Triple Database Design
+- **`opulent_aurum_db`**: NSE Equity Data + Custom equity_data table
+- **`opulent_aurum`**: NSE Equity Data + F&O Derivatives Data
+- **NSE Equity data is replicated in both databases** for flexibility
 
 ### Database Setup
 ```bash
 # PostgreSQL 17 is installed and configured
-# Two databases created for organized data management
+# Two databases with NSE equity data in both for maximum flexibility
 ```
 
 ### NSE Equity Data Schema (`opulent_aurum_db`)
@@ -111,69 +112,22 @@ CREATE TABLE nse_options_data (
 
 ## Usage
 
-### NSE Equity Data Pipeline (`opulent_aurum_db`)
+### NSE Equity Data (Available in Both Databases)
 
 ```python
 from nse_data_pipeline import NSEDataPipeline
 
-# Initialize NSE equity pipeline
-nse_pipeline = NSEDataPipeline()  # Defaults to opulent_aurum_db
+# Use opulent_aurum_db
+nse_db = NSEDataPipeline("postgresql://postgres@localhost:5432/opulent_aurum_db")
+reliance_data_db = nse_db.get_equity_data('RELIANCE')
 
-# Insert equity data
-nse_pipeline.insert_equity_data(
-    symbol='RELIANCE',
-    date=datetime.date(2024, 1, 1),
-    open_price=2500.00,
-    high_price=2520.00,
-    low_price=2480.00,
-    close_price=2510.00,
-    volume=1000000
-)
+# Use opulent_aurum
+nse_main = NSEDataPipeline("postgresql://postgres@localhost:5432/opulent_aurum")
+reliance_data_main = nse_main.get_equity_data('RELIANCE')
 
-# Retrieve data
-reliance_data = nse_pipeline.get_equity_data('RELIANCE')
-print(reliance_data.head())
-```
-
-### F&O Data Pipeline (`opulent_aurum`)
-
-```python
-from nse_data_pipeline import FNODataPipeline
-
-# Initialize F&O pipeline
-fno_pipeline = FNODataPipeline()  # Defaults to opulent_aurum
-
-# Insert futures data
-fno_pipeline.insert_futures_data(
-    symbol='RELIANCE',
-    expiry_date=datetime.date(2024, 1, 25),
-    date=datetime.date(2024, 1, 1),
-    open_price=2520.00,
-    high_price=2540.00,
-    low_price=2500.00,
-    close_price=2530.00,
-    volume=500000,
-    open_interest=2000000
-)
-
-# Insert options data
-fno_pipeline.insert_options_data(
-    symbol='RELIANCE',
-    expiry_date=datetime.date(2024, 1, 25),
-    strike_price=2500.00,
-    option_type='CE',  # 'CE' for Call, 'PE' for Put
-    date=datetime.date(2024, 1, 1),
-    open_price=45.00,
-    high_price=52.00,
-    low_price=42.00,
-    close_price=48.00,
-    volume=100000,
-    open_interest=500000
-)
-
-# Retrieve data
-futures_data = fno_pipeline.get_futures_data('RELIANCE')
-options_data = fno_pipeline.get_options_data('RELIANCE', option_type='CE')
+# Both contain the same NSE equity data
+print(f"Records in opulent_aurum_db: {len(reliance_data_db)}")
+print(f"Records in opulent_aurum: {len(reliance_data_main)}")
 ```
 
 ### Run Complete Test
